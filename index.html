@@ -2965,72 +2965,90 @@ window.threadMode = (new URLSearchParams(window.location.search)).get('mt') === 
 console.log('线程模式:', window.threadMode);
 </script>
 
-<!-- 多线程引擎：外部JS文件（仅多线程模式加载） -->
+<!-- 多线程引擎：动态加载外部JS文件 -->
 <script>
 if (window.threadMode === 'multi') {
-    document.write('<script src="yubai1005_engine_mt.js"><\/script>');
-    document.write('<script src="sf0930_engine_mt.js"><\/script>');
-    document.write('<script src="fs0927_engine_mt.js"><\/script>');
-    document.write('<script src="pf1006_engine_mt.js"><\/script>');
-    document.write('<script src="alpha0823_engine_mt.js"><\/script>');
+    window._mtScriptsLoaded = 0;
+    window._mtScriptsTotal = 5;
+    window._mtInitDone = false;
+    function _mtCheckAllLoaded() {
+        window._mtScriptsLoaded++;
+        if (window._mtScriptsLoaded >= window._mtScriptsTotal && !window._mtInitDone) {
+            window._mtInitDone = true;
+            _initAllMTModules();
+        }
+    }
+    function _loadMtScript(src) {
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = _mtCheckAllLoaded;
+        s.onerror = function() { console.error('MT script load failed:', src); _mtCheckAllLoaded(); };
+        document.head.appendChild(s);
+    }
+    _loadMtScript('yubai1005_engine_mt.js');
+    _loadMtScript('sf0930_engine_mt.js');
+    _loadMtScript('fs0927_engine_mt.js');
+    _loadMtScript('pf1006_engine_mt.js');
+    _loadMtScript('alpha0823_engine_mt.js');
+    // 兜底：5秒后强制初始化（即使有些脚本加载失败）
+    setTimeout(function() {
+        if (!window._mtInitDone) {
+            window._mtInitDone = true;
+            console.warn('MT init timeout, forcing init');
+            _initAllMTModules();
+        }
+    }, 5000);
 }
-</script>
-<script>
-if (window.threadMode === 'multi' && typeof YBModuleMT !== 'undefined') {
-window.YBModule = YBModuleMT;
-// 立即初始化多线程WASM模块（不等YBEngine.init的1000ms延迟）
-// 多线程pthread池初始化较慢，提前启动避免超时
-(function() {
-    var initParams = {};
-    initParams.printErr = function(text) { if (typeof appendDebugLog === 'function') appendDebugLog(text); else console.error(text); };
-    initParams.print = function(text) { if (typeof appendDebugLog === 'function') appendDebugLog(text); else console.log(text); };
-    YBModuleMT(initParams).then(function(mod) {
-        window.YBModule = mod;
-        window.YBModuleReady = true;
-        if (mod._engine_set_threads) mod._engine_set_threads(4);
-        console.log('✅ yubai1005多线程引擎模块初始化成功');
-        if (typeof appendDebugLog === 'function') appendDebugLog('✅ yubai1005多线程引擎就绪(4线程)');
-    }).catch(function(e) {
-        console.error('❌ yubai1005多线程引擎模块初始化失败:', e);
-        if (typeof appendDebugLog === 'function') appendDebugLog('❌ yubai1005多线程初始化失败: ' + e.message);
-    });
+function _initAllMTModules() {
+    console.log('开始初始化多线程引擎模块...');
+    // yubai1005多线程
+    if (typeof YBModuleMT !== 'undefined') {
+        try {
+            YBModuleMT({}).then(function(mod) {
+                window.YBModule = mod;
+                window.YBModuleReady = true;
+                if (mod._engine_set_threads) mod._engine_set_threads(4);
+                console.log('✅ yubai1005多线程引擎就绪(4线程)');
+            }).catch(function(e) { console.error('❌ yubai1005 MT init failed:', e); });
+        } catch(e) { console.error('yubai1005 MT exception:', e); }
+    }
     // SF0930多线程
     if (typeof SF0930ModuleMT !== 'undefined') {
-        SF0930ModuleMT({}).then(function(mod) {
-            window.SF0930ModuleMT_ = mod;
-            if (mod._engine_set_threads) mod._engine_set_threads(4);
-            // 替换单线程Module，引擎对象自动使用MT版本
-            if (typeof SF0930Module !== 'undefined') {
-                window.SF0930Module = mod;
-                window.SF0930Module._ready = true;
-            }
-            console.log('✅ SF0930多线程引擎就绪(4线程)');
-            if (typeof appendDebugLog === 'function') appendDebugLog('✅ SF0930多线程就绪(4线程)');
-        }).catch(function(e) { console.error('SF0930 MT init failed:', e); });
+        try {
+            SF0930ModuleMT({}).then(function(mod) {
+                window.SF0930ModuleMT_ = mod;
+                if (mod._engine_set_threads) mod._engine_set_threads(4);
+                if (typeof SF0930Module !== 'undefined') {
+                    window.SF0930Module = mod;
+                    window.SF0930Module._ready = true;
+                }
+                console.log('✅ SF0930多线程引擎就绪(4线程)');
+            }).catch(function(e) { console.error('SF0930 MT init failed:', e); });
+        } catch(e) { console.error('SF0930 MT exception:', e); }
     }
     // FS0927多线程
     if (typeof FS0927ModuleMT !== 'undefined') {
-        FS0927ModuleMT({}).then(function(mod) {
-            window.FS0927ModuleMT_ = mod;
-            if (mod._engine_set_threads) mod._engine_set_threads(4);
-            if (typeof FSModule !== 'undefined') {
-                window.FSModule = mod;
-                window.FSModuleReady = true;
-            }
-            console.log('✅ FS0927多线程引擎就绪(4线程)');
-            if (typeof appendDebugLog === 'function') appendDebugLog('✅ FS0927多线程就绪(4线程)');
-        }).catch(function(e) { console.error('FS0927 MT init failed:', e); });
+        try {
+            FS0927ModuleMT({}).then(function(mod) {
+                window.FS0927ModuleMT_ = mod;
+                if (mod._engine_set_threads) mod._engine_set_threads(4);
+                if (typeof FSModule !== 'undefined') {
+                    window.FSModule = mod;
+                    window.FSModuleReady = true;
+                }
+                console.log('✅ FS0927多线程引擎就绪(4线程)');
+            }).catch(function(e) { console.error('FS0927 MT init failed:', e); });
+        } catch(e) { console.error('FS0927 MT exception:', e); }
     }
     // alpha0823多线程（单线程引擎，pthread编译）
     if (typeof Alpha0823ModuleMT !== 'undefined') {
-        Alpha0823ModuleMT({}).then(function(mod) {
-            window.Alpha0823ModuleMT_ = mod;
-            // alpha0823的Module变量名需要确认
-            console.log('✅ alpha0823多线程模式就绪（引擎为单线程搜索）');
-            if (typeof appendDebugLog === 'function') appendDebugLog('✅ alpha0823多线程模式就绪');
-        }).catch(function(e) { console.error('alpha0823 MT init failed:', e); });
+        try {
+            Alpha0823ModuleMT({}).then(function(mod) {
+                window.Alpha0823ModuleMT_ = mod;
+                console.log('✅ alpha0823多线程模式就绪（引擎为单线程搜索）');
+            }).catch(function(e) { console.error('alpha0823 MT init failed:', e); });
+        } catch(e) { console.error('alpha0823 MT exception:', e); }
     }
-})();
 }
 </script>
 
