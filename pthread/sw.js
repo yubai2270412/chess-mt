@@ -16,6 +16,7 @@ self.addEventListener('fetch', e => {
     
     e.respondWith(
         fetch(req, {cache: 'no-cache'}).then(res => {
+            console.log('[SW] fetch ok:', url.pathname, 'status=', res.status, 'mode=', req.mode, 'dest=', req.destination);
             return res.arrayBuffer().then(buf => {
                 const newHeaders = new Headers(res.headers);
                 newHeaders.set('Content-Length', buf.byteLength);
