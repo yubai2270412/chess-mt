@@ -86,11 +86,11 @@ self.onmessage = async function(e) {
             
             self.postMessage({
                 type: 'result',
-                workerId: data.workerId,
-                move: move,
-                nodes: nodes,
-                elapsed: elapsed,
-                nps: elapsed > 0 ? Math.round(nodes / (elapsed / 1000)) : 0
+                workerId: Number(data.workerId),
+                move: String(move),
+                nodes: Number(nodes),
+                elapsed: Number(elapsed),
+                nps: Number(elapsed > 0 ? Math.round(nodes / (elapsed / 1000)) : 0)
             });
         } catch (err) {
             self.postMessage({type: 'error', workerId: data.workerId, error: err.message});
