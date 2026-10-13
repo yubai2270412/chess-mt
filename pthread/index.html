@@ -2,19 +2,15 @@
 <html lang="zh-CN">
 <head>
 <script>
-// Service Worker自动注册和激活（用于COOP/COEP头支持SharedArrayBuffer）
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (!navigator.serviceWorker.controller) {
-        // 没有SW控制，注册并等待激活后自动刷新
         navigator.serviceWorker.register('sw.js').then(function(reg) {
             var worker = reg.installing || reg.waiting || reg.active;
             if (worker) {
                 worker.addEventListener('statechange', function() {
                     if (worker.state === 'activated') window.location.reload();
                 });
-                if (worker.state === 'activated' && !navigator.serviceWorker.controller) {
-                    window.location.reload();
-                }
+                if (worker.state === 'activated') window.location.reload();
             }
         }).catch(function() {});
     }
@@ -1544,7 +1540,9 @@ var PikafishEngine = {
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=CwTeXKai&family=Long+Cang&family=Zhi+Mang+Xing&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <script>
 // 注册Service Worker以支持COOP/COEP（SharedArrayBuffer）
-// SW已在页面顶部注册
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW注册失败:', e));
+}
 // 全局线程数
 window.PTHREAD_THREADS = 4;
 </script>
