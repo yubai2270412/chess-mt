@@ -2971,11 +2971,12 @@ if (window.threadMode === 'multi') {
     window._mtScriptsLoaded = 0;
     window._mtScriptsTotal = 5;
     window._mtInitDone = false;
+    window._mtScriptsReady = false;
     function _mtCheckAllLoaded() {
         window._mtScriptsLoaded++;
-        if (window._mtScriptsLoaded >= window._mtScriptsTotal && !window._mtInitDone) {
-            window._mtInitDone = true;
-            _initAllMTModules();
+        if (window._mtScriptsLoaded >= window._mtScriptsTotal && !window._mtScriptsReady) {
+            window._mtScriptsReady = true;
+            console.log('所有MT脚本加载完成，等待页面就绪后初始化');
         }
     }
     function _loadMtScript(src) {
@@ -2990,14 +2991,29 @@ if (window.threadMode === 'multi') {
     _loadMtScript('fs0927_engine_mt.js');
     _loadMtScript('pf1006_engine_mt.js');
     _loadMtScript('alpha0823_engine_mt.js');
-    // 兜底：5秒后强制初始化（即使有些脚本加载失败）
+    // 页面加载完成后再初始化WASM（避免阻塞页面渲染）
+    function _tryInitMT() {
+        if (window._mtInitDone) return;
+        if (window._mtScriptsReady) {
+            window._mtInitDone = true;
+            _initAllMTModules();
+        } else {
+            setTimeout(_tryInitMT, 500);
+        }
+    }
+    if (document.readyState === 'complete') {
+        setTimeout(_tryInitMT, 1000);
+    } else {
+        window.addEventListener('load', function() { setTimeout(_tryInitMT, 1000); });
+    }
+    // 兜底：15秒后强制初始化
     setTimeout(function() {
         if (!window._mtInitDone) {
             window._mtInitDone = true;
             console.warn('MT init timeout, forcing init');
             _initAllMTModules();
         }
-    }, 5000);
+    }, 15000);
 }
 function _initAllMTModules() {
     console.log('开始初始化多线程引擎模块...');
