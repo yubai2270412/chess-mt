@@ -536,10 +536,7 @@ var YBEngine = {
                 if (typeof appendDebugLog === 'function') appendDebugLog(text);
                 else console.error(text);
             };
-            initParams.print = function(text) {
-                if (typeof appendDebugLog === 'function') appendDebugLog(text);
-                else console.log(text);
-            };
+            initParams.print = function(text) { /* 静默引擎stdout，避免info depth日志刷屏 */ };
             // emscripten 6.x: 使用instantiateWasm回调直接从内存实例化WASM
             if (typeof _ybWasmBinaryData !== 'undefined') {
                 initParams.instantiateWasm = function(imports, successCallback) {
