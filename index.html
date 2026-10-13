@@ -22613,6 +22613,7 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                     return null;
                 }
             };
+            window.FairyEngine = FairyEngine; // 暴露到全局用于调试
 
             // 页面加载后初始化引擎
             setTimeout(() => FairyEngine.init(), 500);
