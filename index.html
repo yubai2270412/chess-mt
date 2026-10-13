@@ -20854,11 +20854,16 @@ function countAttackers(row, col, color, bd) {
                     const scripts = document.querySelectorAll('script');
                     let wasmCode = '';
                     let alphaCode = '';
+                    let alphaGlueCode = '';
                     for (const s of scripts) {
                         if (!s.textContent) continue;
                         // 提取alpha0823的Module.wasmBinaryData（独立script块，不在引擎大script中）
                         if (s.textContent.indexOf('Module.wasmBinaryData') >= 0 && s.textContent.indexOf('WasmEngine') < 0) {
                             alphaCode = s.textContent;
+                        }
+                        // 提取alpha0823的emscripten glue代码（含ENVIRONMENT_IS_WEB和createWasm，不含WasmEngine）
+                        if (s.textContent.indexOf('ENVIRONMENT_IS_WEB') >= 0 && s.textContent.indexOf('createWasm') >= 0 && s.textContent.indexOf('WasmEngine') < 0) {
+                            alphaGlueCode = s.textContent;
                         }
                         // 只提取引擎定义块（含var WasmEngine定义），排除含FairyEngine的主游戏逻辑块
                         if ((s.textContent.indexOf('var WasmEngine') >= 0 || s.textContent.indexOf('const WasmEngine') >= 0) &&
@@ -20867,8 +20872,9 @@ function countAttackers(row, col, color, bd) {
                             wasmCode = s.textContent;
                         }
                     }
-                    // 把alpha0823的Module配置和WASM二进制数据放在引擎代码之前
+                    // 把alpha0823的Module配置、glue代码和WASM二进制数据放在引擎代码之前
                     if (alphaCode) wasmCode = alphaCode + "\n" + wasmCode;
+                    if (alphaGlueCode) wasmCode = alphaGlueCode + "\n" + wasmCode;
                     // yubai1005/FS0927/SF0930/pf1006的WASM数据已包含在上述大script中
                     // 修复Worker中的window引用：在Worker中window不存在，用self代替
                     wasmCode = "var window = self; var document = { addEventListener: function(){}, querySelectorAll: function(){return [];}, currentScript: null }; var navigator = self.navigator || {};\n" + wasmCode;
@@ -21964,7 +21970,7 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                                             }
                                         } catch(_fenErr) {}
                                         // alpha0823：强制同步搜索，不使用Worker异步（用户要求）
-                                        if (isActuallyAlpha || (window.jieqiMode && !isActuallyPFOld)) {
+                                        if (isActuallyAlpha) {
                                             // 先等待走棋动画播放完成（CSS transition 300ms），避免同步搜索阻塞主线程导致动画卡顿
                                             if (typeof appendDebugLog === 'function') appendDebugLog('⏳ ' + _curEngName + '等待走棋动画完成（300ms）...');
                                             await new Promise(r => setTimeout(r, 300));
