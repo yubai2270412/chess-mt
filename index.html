@@ -4098,33 +4098,7 @@ var PikafishEngine = {
             <span style="font-size:10px;color:#8B4513;font-weight:bold;">⚙️设置</span>
         </div>
         <div class="captured-area" id="capturedArea" style="flex:1;justify-content:flex-start;"></div>
-        <div style="display:flex;align-items:center;gap:4px;">
-            <button id="threadToggleBtn" style="padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid #8B4513;background:#fff;color:#8B4513;cursor:pointer;font-weight:bold;" onclick="toggleThreadMode()">
-                <span id="threadModeLabel">单线程</span>
-            </button>
-        </div>
     </div>
-    <script>
-    function toggleThreadMode() {
-        var current = new URLSearchParams(window.location.search).get('mt') === '1' ? 'multi' : 'single';
-        var next = current === 'multi' ? 'single' : 'multi';
-        var url = new URL(window.location.href);
-        if (next === 'multi') url.searchParams.set('mt', '1');
-        else url.searchParams.delete('mt');
-        window.location.href = url.toString();
-    }
-    // 初始化按钮显示
-    document.addEventListener('DOMContentLoaded', function() {
-        var isMulti = window.threadMode === 'multi';
-        var label = document.getElementById('threadModeLabel');
-        var btn = document.getElementById('threadToggleBtn');
-        if (label) label.textContent = isMulti ? '多线程(4核)' : '单线程';
-        if (btn) {
-            btn.style.background = isMulti ? '#4CAF50' : '#fff';
-            btn.style.color = isMulti ? '#fff' : '#8B4513';
-        }
-    });
-    </script>
     <!-- 侧边栏遮罩 -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <!-- 左侧抽屉侧边栏 -->
@@ -38407,11 +38381,25 @@ mergeCurrentGameToGlobal(winner);
             const threadSelect = document.getElementById('threadCount');
             const threadStatus = document.getElementById('threadStatus');
             if (threadSelect) {
-                // 同步已保存的线程数设置（默认1线程）
+                // 同步已保存的线程数设置（多线程模式默认4线程，单线程默认1线程）
                 try {
-                    const savedThreads = localStorage.getItem('yubai_thread_count') || '1';
+                    var defaultThreads = window.threadMode === 'multi' ? '4' : '1';
+                    const savedThreads = localStorage.getItem('yubai_thread_count') || defaultThreads;
                     threadSelect.value = savedThreads;
                     if (threadStatus) threadStatus.textContent = savedThreads === 'auto' ? '⚡ 自动' : '⚡ ' + savedThreads + '线程';
+                    // 多线程模式下初始化WASM线程数
+                    if (window.threadMode === 'multi') {
+                        var initN = parseInt(savedThreads);
+                        if (!isNaN(initN)) {
+                            initN = Math.max(1, Math.min(8, initN));
+                            // 延迟设置，等WASM模块初始化完成
+                            setTimeout(function() {
+                                if (window.YBModule && window.YBModule._engine_set_threads) { try { window.YBModule._engine_set_threads(initN); } catch(e){} }
+                                if (window.SF0930Module && window.SF0930Module._engine_set_threads) { try { window.SF0930Module._engine_set_threads(initN); } catch(e){} }
+                                if (window.FSModule && window.FSModule._engine_set_threads) { try { window.FSModule._engine_set_threads(initN); } catch(e){} }
+                            }, 2000);
+                        }
+                    }
                 } catch(e) {}
                 threadSelect.addEventListener('change', (e) => {
                     const count = e.target.value;
@@ -38424,6 +38412,18 @@ mergeCurrentGameToGlobal(winner);
                         var cn = parseInt(count);
                         if (!isNaN(cn)) window.AndroidBridge.setThreads(Math.max(1, Math.min(8, cn)));
                     }
+                    // WebAssembly多线程引擎：动态调整线程数
+                    if (window.threadMode === 'multi') {
+                        var cn = parseInt(count);
+                        if (!isNaN(cn)) {
+                            var n = Math.max(1, Math.min(8, cn));
+                            if (window.YBModule && window.YBModule._engine_set_threads) { try { window.YBModule._engine_set_threads(n); } catch(e){} }
+                            if (window.SF0930Module && window.SF0930Module._engine_set_threads) { try { window.SF0930Module._engine_set_threads(n); } catch(e){} }
+                            if (window.FSModule && window.FSModule._engine_set_threads) { try { window.FSModule._engine_set_threads(n); } catch(e){} }
+                            if (typeof appendDebugLog === 'function') appendDebugLog('⚡ WASM多线程引擎已设置为' + n + '线程');
+                        }
+                    }
+                    try { localStorage.setItem('yubai_thread_count', count); } catch(e) {}
                     if (typeof appendDebugLog === 'function') appendDebugLog('⚡ 线程数已设置为：' + (count === 'auto' ? '自动' : count + '线程'));
                 });
             }
