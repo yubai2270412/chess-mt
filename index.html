@@ -21170,6 +21170,7 @@ self.onmessage = function(e) {
                 let fsDepth = data.depth;
                 let mv = null;
                 let fsRetry = 0;
+                const searchStart = Date.now();
                 while (fsRetry < 3 && !mv) {
                     try {
                         mv = engine.getBestMove(data.bd, data.color, data.time, fsDepth, data.history || null);
@@ -21182,7 +21183,9 @@ self.onmessage = function(e) {
                     }
                     fsRetry++;
                 }
-                const nodes = engine.getNodeCount ? engine.getNodeCount() : 0;
+                const searchElapsed = Date.now() - searchStart;
+                const rawNodes = engine.getNodeCount ? engine.getNodeCount() : 0;
+                const nodes = (typeof rawNodes === 'bigint') ? Number(rawNodes) : (rawNodes || 0);
                 let score = 0;
                 try {
                     if (mv && typeof mv.score === 'number' && mv.score !== 0) {
@@ -21191,7 +21194,7 @@ self.onmessage = function(e) {
                         score = (data.engine === 'fs' || data.engine === 'yubai1005' || data.engine === 'pf1006' || data.engine === 'pf1006_full') ? engine.getEvalScore() : engine.getEvalScore(data.bd, data.color);
                     }
                 } catch(e) {}
-                self.postMessage({ type: 'fullSearchResult', move: mv, score: score, nodes: nodes, taskId: data.taskId, generation: data.generation });
+                self.postMessage({ type: 'fullSearchResult', move: mv, score: score, nodes: nodes, elapsed: searchElapsed, retries: fsRetry, taskId: data.taskId, generation: data.generation });
                 } // end doSearchActual
             } catch(err) {
                 self.postMessage({ type: 'fullSearchResult', error: err.message, taskId: data.taskId, generation: data.generation });
@@ -21292,8 +21295,10 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                                 return;
                             }
                             if (e.data.error) {
+                                if (typeof appendDebugLog === 'function') appendDebugLog('❌ Worker搜索失败: ' + e.data.error);
                                 task.reject(new Error(e.data.error));
                             } else {
+                                if (typeof appendDebugLog === 'function') appendDebugLog('✅ Worker返回: 节点' + (e.data.nodes||0) + ' 耗时' + (e.data.elapsed||0) + 'ms 重试' + (e.data.retries||0) + '次');
                                 task.resolve({ move: e.data.move, score: e.data.score, nodes: e.data.nodes });
                             }
                         }
@@ -21378,14 +21383,22 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                         taskIds.forEach(tid => this.pendingFullSearch.delete(tid));
                         // 收集成功的结果
                         const okResults = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
-                        if (okResults.length === 0) return null;
+                        const failResults = results.filter(r => r.status === 'rejected').map(r => r.reason);
+                        if (typeof appendDebugLog === 'function') appendDebugLog('🔍 Worker搜索完成: 成功' + okResults.length + '/' + workerCount + ' 失败' + failResults.length + (failResults.length ? ' 原因:' + failResults.map(f=>f.message).join(',') : ''));
+                        if (okResults.length === 0) {
+                            if (typeof appendDebugLog === 'function') appendDebugLog('❌ 所有Worker搜索失败，回退同步搜索');
+                            return null;
+                        }
                         // 取评分最优的结果（从当前搜索方视角，score越大越好）
                         let best = okResults[0];
                         let totalNodes = 0;
-                        for (const r of okResults) {
+                        for (let wi = 0; wi < okResults.length; wi++) {
+                            const r = okResults[wi];
                             totalNodes += (r.nodes || 0);
+                            if (typeof appendDebugLog === 'function') appendDebugLog('  Worker' + wi + ': 节点' + (r.nodes||0) + ' 评分' + (r.score||0));
                             if ((r.score || 0) > (best.score || 0)) best = r;
                         }
+                        if (typeof appendDebugLog === 'function') appendDebugLog('📊 多线程总节点: ' + totalNodes + ' (单线程约' + Math.round(totalNodes / okResults.length) + '/线程)');
                         // 返回最优走法，总节点数为所有Worker之和
                         return { move: best.move, score: best.score, nodes: totalNodes };
                     } catch(e) {
