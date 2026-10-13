@@ -82,7 +82,7 @@ self.onmessage = async function(e) {
             var movePtr = mod._engine_get_best_move(0, data.time || 1000);  // maxDepth=0不限制，timeMs=1000
             var move = mod.UTF8ToString(movePtr);
             var elapsed = Date.now() - startTime;
-            var nodes = mod._engine_get_node_count ? mod._engine_get_node_count() : 0;
+            var nodes = mod._engine_get_node_count ? Number(mod._engine_get_node_count()) : 0;
             
             self.postMessage({
                 type: 'result',
