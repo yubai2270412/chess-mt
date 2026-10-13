@@ -21389,6 +21389,9 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                         // 收集成功的结果
                         const okResults = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
                         const failResults = results.filter(r => r.status === 'rejected').map(r => r.reason);
+                        // 先计算总节点数，避免let暂时性死区导致ReferenceError
+                        let totalNodes = 0;
+                        for (let _ni = 0; _ni < okResults.length; _ni++) totalNodes += (okResults[_ni].nodes || 0);
                         if (typeof appendDebugLog === 'function') appendDebugLog('🔍 多线程搜索: ' + okResults.length + '/' + workerCount + ' Worker成功, 总节点' + totalNodes + (failResults.length ? ' (' + failResults.length + '失败)' : ''));
                         if (okResults.length === 0) {
                             if (typeof appendDebugLog === 'function') appendDebugLog('❌ 所有Worker搜索失败，回退同步搜索');
@@ -21396,10 +21399,8 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                         }
                         // 取评分最优的结果（从当前搜索方视角，score越大越好）
                         let best = okResults[0];
-                        let totalNodes = 0;
                         for (let wi = 0; wi < okResults.length; wi++) {
                             const r = okResults[wi];
-                            totalNodes += (r.nodes || 0);
                             if ((r.score || 0) > (best.score || 0)) best = r;
                         }
                         // 返回最优走法，总节点数为所有Worker之和
