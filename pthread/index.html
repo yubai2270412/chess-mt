@@ -1523,17 +1523,39 @@ var PikafishEngine = {
     
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=CwTeXKai&family=Long+Cang&family=Zhi+Mang+Xing&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <script>
-// 注册Service Worker以支持COOP/COEP（SharedArrayBuffer）
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW注册失败:', e));
-}
-// 全局线程数
 window.PTHREAD_THREADS = 4;
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    if (navigator.serviceWorker.controller) {
+        window._swReady = true;
+    } else {
+        navigator.serviceWorker.register('sw.js').then(function(reg) {
+            if (reg.active) {
+                if (!navigator.serviceWorker.controller) window.location.reload();
+            } else if (reg.installing || reg.waiting) {
+                var worker = reg.installing || reg.waiting;
+                worker.addEventListener('statechange', function() {
+                    if (worker.state === 'activated') window.location.reload();
+                });
+            }
+        }).catch(function(e) { console.log('SW注册失败:', e); });
+    }
+} else { window._swReady = true; }
 </script>
-<script src="yubai1005_engine_mt.js"></script>
-<script src="fs0927_engine_mt.js"></script>
-<script src="sf0930_engine_mt.js"></script>
-<script src="alpha0823_engine_mt.js"></script>
+<script>
+function loadPthreadScripts() {
+    ['yubai1005_engine_mt.js','fs0927_engine_mt.js','sf0930_engine_mt.js','alpha0823_engine_mt.js'].forEach(function(src) {
+        var s = document.createElement('script');
+        s.src = src + '?v=2';
+        s.async = false;
+        document.head.appendChild(s);
+    });
+}
+if (window._swReady || !('serviceWorker' in navigator) || location.protocol !== 'https:') {
+    loadPthreadScripts();
+} else {
+    navigator.serviceWorker.addEventListener('controllerchange', function() { loadPthreadScripts(); });
+}
+</script>
 
 </head>
 <body class="theme-wood">
