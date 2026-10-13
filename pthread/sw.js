@@ -9,11 +9,12 @@ self.addEventListener('fetch', e => {
     
     e.respondWith(
         fetch(req).then(res => {
-            const newHeaders = new Headers(res.headers);
+            const clone = res.clone();
+            const newHeaders = new Headers(clone.headers);
             newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
             newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
             newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
-            return new Response(res.body, { 
+            return new Response(clone.body, { 
                 status: res.status, 
                 statusText: res.statusText, 
                 headers: newHeaders 
