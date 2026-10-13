@@ -4888,8 +4888,8 @@ var PikafishEngine = {
                         <label>⚡线程</label>
                         <select id="threadCount" style="padding:2px 6px;font-size:0.7rem;border:1px solid #ddd;border-radius:4px;background:#fff;">
                             <option value="auto">自动</option>
-                            <option value="1" selected>1线程</option>
-                            <option value="2">2线程</option>
+                            <option value="1">1线程</option>
+                            <option value="2" selected>2线程</option>
                             <option value="3">3线程</option>
                             <option value="4">4线程</option>
                             <option value="5">5线程</option>
@@ -21223,8 +21223,8 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                     // 检测CPU核心数，动态调整线程数（手机端通常2-8核）
                     const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
                     // 读取用户设置的线程数（默认1线程，单线程完整搜索棋力最稳定）
-                    let userThreads = '1';
-                    try { userThreads = localStorage.getItem('yubai_thread_count') || '1'; } catch(e) {}
+                    let userThreads = '2';
+                    try { userThreads = localStorage.getItem('yubai_thread_count') || '2'; } catch(e) {}
                     if (userThreads === 'auto') {
                         this.workerCount = Math.max(2, Math.min(8, cores - 1)); // 自动模式：留1核给UI，上限8线程
                     } else {
@@ -38779,9 +38779,9 @@ mergeCurrentGameToGlobal(winner);
             const threadSelect = document.getElementById('threadCount');
             const threadStatus = document.getElementById('threadStatus');
             if (threadSelect) {
-                // 同步已保存的线程数设置（默认1线程）
+                // 同步已保存的线程数设置（默认2线程）
                 try {
-                    const savedThreads = localStorage.getItem('yubai_thread_count') || '1';
+                    const savedThreads = localStorage.getItem('yubai_thread_count') || '2';
                     threadSelect.value = savedThreads;
                     if (threadStatus) threadStatus.textContent = savedThreads === 'auto' ? '⚡ 自动' : '⚡ ' + savedThreads + '线程';
                 } catch(e) {}
