@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>pthread测试2</title>
+</head>
+<body>
+<h1>pthread测试2 - SW调试</h1>
+<div id="log">日志:<br></div>
+<script>
+function log(msg) {
+    document.getElementById('log').innerHTML += msg + '<br>';
+}
+log('protocol=' + location.protocol);
+log('serviceWorker支持=' + ('serviceWorker' in navigator));
+log('controller=' + navigator.serviceWorker.controller);
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+        log('SW注册成功! scope=' + reg.scope);
+        log('active=' + !!reg.active + ' installing=' + !!reg.installing + ' waiting=' + !!reg.waiting);
+        var worker = reg.installing || reg.waiting || reg.active;
+        if (worker) {
+            log('worker状态=' + worker.state);
+            worker.addEventListener('statechange', function() {
+                log('worker状态变更=' + worker.state);
+                if (worker.state === 'activated') {
+                    log('SW已激活，刷新页面...');
+                    window.location.reload();
+                }
+            });
+        }
+    }).catch(function(e) {
+        log('SW注册失败: ' + e.message + ' ' + e.name);
+    });
+}
+</script>
+<script src="yubai1005_engine_mt.js"></script>
+<script>
+log('YBModuleMT=' + typeof YBModuleMT);
+log('crossOriginIsolated=' + window.crossOriginIsolated);
+</script>
+</body>
+</html>
