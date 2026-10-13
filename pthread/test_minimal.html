@@ -2,32 +2,12 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>pthread最小测试</title>
-<script>
-// SW注册 - 只在首次安装后刷新一次
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(function(reg) {
-        console.log('SW注册成功');
-        // 监听新SW安装完成，只刷新一次
-        reg.addEventListener('updatefound', function() {
-            var newWorker = reg.installing;
-            newWorker.addEventListener('statechange', function() {
-                if (newWorker.state === 'activated') {
-                    if (!sessionStorage.getItem('sw_reloaded')) {
-                        sessionStorage.setItem('sw_reloaded', '1');
-                        location.reload();
-                    }
-                }
-            });
-        });
-    }).catch(function(e) {
-        console.log('SW注册失败:', e);
-    });
-}
-</script>
+<title>pthread最小测试 - meta标签</title>
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+<meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
 </head>
 <body>
-<h1>pthread最小测试页面</h1>
+<h1>pthread最小测试 - meta标签COOP/COEP（无SW）</h1>
 <div id="status">加载中...</div>
 <div id="result"></div>
 <script src="yubai1005_engine_mt.js"></script>
@@ -43,12 +23,10 @@ window.addEventListener('load', function() {
     document.getElementById('status').textContent = '正在初始化pthread...';
     
     var startTime = Date.now();
-    var depsCount = 0;
     YBModuleMT({
         print: function(t) { document.getElementById('result').textContent += t + '\n'; },
         printErr: function(t) { document.getElementById('result').textContent += 'ERR: ' + t + '\n'; },
         monitorRunDependencies: function(n) {
-            depsCount = n;
             document.getElementById('result').textContent += '[deps=' + n + ']\n';
         },
         onRuntimeInitialized: function() {
@@ -58,7 +36,6 @@ window.addEventListener('load', function() {
         var elapsed = Date.now() - startTime;
         document.getElementById('status').textContent = 'pthread初始化成功! 耗时' + elapsed + 'ms';
         
-        // 测试引擎
         if (mod._engine_init) {
             mod._engine_init();
             document.getElementById('result').textContent += 'engine_init成功\n';
@@ -68,7 +45,6 @@ window.addEventListener('load', function() {
                 document.getElementById('result').textContent += 'set_threads(2)成功\n';
             }
             
-            // 测试搜索
             var boardPtr = mod._malloc(90 * 4);
             var histPtr = mod._malloc(200 * 16);
             mod._engine_set_board(boardPtr, 0);
@@ -84,7 +60,6 @@ window.addEventListener('load', function() {
         document.getElementById('result').textContent += e.stack + '\n';
     });
     
-    // 超时检测
     setTimeout(function() {
         if (document.getElementById('status').textContent.indexOf('成功') === -1) {
             document.getElementById('status').textContent += ' (10秒超时)';
