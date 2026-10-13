@@ -4,18 +4,23 @@ self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 
 self.addEventListener('fetch', e => {
     const req = e.request;
-    // 只处理页面导航请求，其他请求直接通过
-    if (req.mode !== 'navigate') return;
+    const url = new URL(req.url);
+    
+    // 只处理同源请求
+    if (url.origin !== location.origin) return;
     
     e.respondWith(
         fetch(req).then(res => {
-            // 克隆响应以读取body
             const clone = res.clone();
             return clone.arrayBuffer().then(buf => {
                 const newHeaders = new Headers(clone.headers);
-                newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-                newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
-                // 确保Content-Length正确
+                // 页面导航需要COOP/COEP头
+                if (req.mode === 'navigate') {
+                    newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+                    newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+                }
+                // 所有同源资源都添加CORP头，防止被COEP阻止
+                newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
                 newHeaders.set('Content-Length', buf.byteLength);
                 return new Response(buf, { 
                     status: clone.status, 
@@ -23,6 +28,8 @@ self.addEventListener('fetch', e => {
                     headers: newHeaders 
                 });
             });
+        }).catch(() => {
+            return fetch(req);
         })
     );
 });
