@@ -67,7 +67,9 @@
                 1,2,3,4,5,4,3,2,1
             ]);
             var boardPtr = mod._malloc(board.length * 4);
-            mod.HEAP32.set(board, boardPtr >> 2);
+            for (var i = 0; i < board.length; i++) {
+                mod.setValue(boardPtr + i * 4, board[i], 'i32');
+            }
             mod._engine_set_board(boardPtr, 0, 0);  // side=0红方, hidden=0(null)
             mod._free(boardPtr);
             log('set_board 完成');
