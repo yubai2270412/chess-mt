@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <title>所有引擎pthread多线程测试</title>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(() => console.log('SW registered'));
+}
+</script>
 <style>
 body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
 .engine { margin: 10px 0; padding: 10px; border: 1px solid #333; border-radius: 5px; }
