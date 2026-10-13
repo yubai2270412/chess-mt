@@ -39268,27 +39268,6 @@ window.addEventListener('load', function() {
         }
     }, 5000);
     </script>
-    <script>
-    // 配置coi-serviceworker：禁用自动reload，避免无限循环
-    window.coi = {
-        doReload: false,
-        onSuccess: function() {
-            console.log('✅ 跨域隔离已生效 (crossOriginIsolated=' + window.crossOriginIsolated + ')');
-        },
-        onError: function(e) {
-            console.warn('⚠️ coi-serviceworker注册失败:', e);
-        }
-    };
-    // 页面加载完成后检查跨域隔离状态，如果SW已注册但还没生效，手动reload一次
-    window.addEventListener('load', function() {
-        setTimeout(function() {
-            if (!window.crossOriginIsolated && navigator.serviceWorker && navigator.serviceWorker.controller) {
-                console.log('🔄 Service Worker已激活但crossOriginIsolated=false，手动reload');
-                window.location.reload();
-            }
-        }, 1500);
-    });
-    </script>
-    <script src="coi-serviceworker.js"></script>
+    <!-- Web Worker多线程不需要跨域隔离，移除coi-serviceworker，避免无限刷新 -->
 </body>
 </html> 
