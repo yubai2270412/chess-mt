@@ -20856,13 +20856,20 @@ function countAttackers(row, col, color, bd) {
                     // 禁止用indexOf('YBEngine')匹配其他script，因为buildWorkerScript自身代码也含该字符串，会把主游戏逻辑误塞进Worker
                     const scripts = document.querySelectorAll('script');
                     let wasmCode = '';
+                    let alphaCode = '';
                     for (const s of scripts) {
-                        if (s.textContent && s.textContent.indexOf('WasmEngine') >= 0 && s.textContent.indexOf('_engine_get_best_move') >= 0) {
+                        if (!s.textContent) continue;
+                        // 提取alpha0823的Module.wasmBinaryData（独立script块，不在引擎大script中）
+                        if (s.textContent.indexOf('Module.wasmBinaryData') >= 0 && s.textContent.indexOf('WasmEngine') < 0) {
+                            alphaCode = s.textContent;
+                        }
+                        if (s.textContent.indexOf('WasmEngine') >= 0 && s.textContent.indexOf('_engine_get_best_move') >= 0) {
                             wasmCode = s.textContent;
-                            break;
                         }
                     }
-                    // yubai1005已包含在上述大script中，无需额外提取
+                    // 把alpha0823的Module配置和WASM二进制数据放在引擎代码之前
+                    if (alphaCode) wasmCode = alphaCode + "\n" + wasmCode;
+                    // yubai1005/FS0927/SF0930/pf1006的WASM数据已包含在上述大script中
                     // 修复Worker中的window引用：在Worker中window不存在，用self代替
                     wasmCode = "var window = self; var document = { addEventListener: function(){}, querySelectorAll: function(){return [];}, currentScript: null }; var navigator = self.navigator || {};\n" + wasmCode;
                     wasmCode = wasmCode.replace(
