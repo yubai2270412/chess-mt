@@ -43,9 +43,17 @@ window.addEventListener('load', function() {
     document.getElementById('status').textContent = '正在初始化pthread...';
     
     var startTime = Date.now();
+    var depsCount = 0;
     YBModuleMT({
         print: function(t) { document.getElementById('result').textContent += t + '\n'; },
-        printErr: function(t) { document.getElementById('result').textContent += 'ERR: ' + t + '\n'; }
+        printErr: function(t) { document.getElementById('result').textContent += 'ERR: ' + t + '\n'; },
+        monitorRunDependencies: function(n) {
+            depsCount = n;
+            document.getElementById('result').textContent += '[deps=' + n + ']\n';
+        },
+        onRuntimeInitialized: function() {
+            document.getElementById('result').textContent += '[onRuntimeInitialized]\n';
+        }
     }).then(function(mod) {
         var elapsed = Date.now() - startTime;
         document.getElementById('status').textContent = 'pthread初始化成功! 耗时' + elapsed + 'ms';
