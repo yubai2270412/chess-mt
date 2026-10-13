@@ -1,4 +1,4 @@
-// Service Worker - match local coop_server.py config (require-corp)
+// Service Worker - arrayBuffer for ALL resources to ensure Content-Length
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 
@@ -16,30 +16,27 @@ self.addEventListener('fetch', e => {
     
     e.respondWith(
         fetch(req).then(res => {
-            const newHeaders = new Headers(res.headers);
-            newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-            newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
-            newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
-            
-            if (isHtml) {
-                // HTML用arrayBuffer确保Content-Length正确
-                return res.arrayBuffer().then(buf => {
-                    newHeaders.set('Content-Length', buf.byteLength);
+            return res.arrayBuffer().then(buf => {
+                const newHeaders = new Headers(res.headers);
+                newHeaders.set('Content-Length', buf.byteLength);
+                newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+                newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+                newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
+                
+                if (isHtml) {
                     newHeaders.set('Content-Type', 'text/html; charset=utf-8');
-                    return new Response(buf, {
-                        status: res.status,
-                        statusText: res.statusText,
-                        headers: newHeaders
-                    });
-                });
-            } else {
-                // JS/WASM用流传递，保留原Content-Length
-                return new Response(res.body, {
+                } else if (isJs) {
+                    newHeaders.set('Content-Type', 'application/javascript');
+                } else if (isWasm) {
+                    newHeaders.set('Content-Type', 'application/wasm');
+                }
+                
+                return new Response(buf, {
                     status: res.status,
                     statusText: res.statusText,
                     headers: newHeaders
                 });
-            }
+            });
         }).catch(() => fetch(req))
     );
 });
