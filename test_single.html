@@ -37,7 +37,12 @@
     async function runTest() {
         try {
             log('正在初始化WASM模块...');
-            var mod = await YBModule();
+            var mod = await YBModule({
+                locateFile: function(path) {
+                    if (path.endsWith('.wasm')) return 'yubai1005_final.wasm';
+                    return path;
+                }
+            });
             log('WASM模块加载完成，等待导出函数分配...');
             
             await waitForExports(mod, 10000);
