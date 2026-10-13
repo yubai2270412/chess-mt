@@ -5,6 +5,7 @@ self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch', e => {
     const req = e.request;
     const url = new URL(req.url);
+    console.log('[SW FETCH]', url.pathname, 'mode=', req.mode, 'dest=', req.destination);
     
     if (url.origin !== location.origin) return;
     
