@@ -55,13 +55,12 @@ var WasmEngine = {
     _flatBuffer: null,
     isAndroid: (typeof window !== 'undefined' && typeof window.AndroidBridge !== 'undefined'),
     isReallyReady: function() {
-        if (this.isAndroid) return true; // Android 原生引擎随 APK 加载完成
+        if (this.isAndroid) return true;
         return typeof Module !== 'undefined' &&
                Module._engine_init &&
                Module._malloc &&
                Module._free &&
-               Module.setValue &&
-               Module.UTF8ToString;
+               Module.setValue;
     },
     init: function() {
         var self = this;
@@ -86,20 +85,31 @@ var WasmEngine = {
                     self._historyPtr = Module._malloc(self._historyCapacity * 16);
                     self._flatBuffer = new Int32Array(90);
                 }
-                if (typeof appendDebugLog === 'function') appendDebugLog('✅ WebAssembly引擎就绪（内存复用优化）');
+                if (typeof appendDebugLog === 'function') appendDebugLog('✅ alpha0823引擎就绪（pthread' + (window.PTHREAD_THREADS || 4) + '线程）');
             } else {
                 setTimeout(checkReady, 100);
             }
         };
-        if (typeof Module !== 'undefined') {
+        // 使用alpha0823 pthread多线程版本
+        if (typeof Alpha0823ModuleMT === 'function') {
+            Alpha0823ModuleMT().then(function(mod) {
+                Module = mod;
+                if (Module._engine_set_threads) Module._engine_set_threads(window.PTHREAD_THREADS || 4);
+                checkReady();
+            }).catch(function(e) {
+                if (typeof appendDebugLog === 'function') appendDebugLog('❌ alpha0823 pthread加载失败: ' + e.message);
+            });
+        } else if (typeof Module !== 'undefined') {
             if (Module.onRuntimeInitialized) {
                 var oldCb = Module.onRuntimeInitialized;
                 Module.onRuntimeInitialized = function() { if(oldCb) oldCb(); checkReady(); };
             } else {
                 Module.onRuntimeInitialized = checkReady;
             }
+            checkReady();
+        } else {
+            checkReady();
         }
-        checkReady();
     },
     boardToFlat: function(bd, side) {
         var flat = new Int32Array(90);
@@ -935,7 +945,7 @@ var FSEngine = {
     isReallyReady: function() {
         return FSModuleReady && typeof FSModule === 'object' &&
                FSModule._engine_init && FSModule._malloc && FSModule._free &&
-               FSModule.setValue && FSModule.UTF8ToString;
+               FSModule.setValue;
     },
     init: function() {
         var self = this;
@@ -946,19 +956,20 @@ var FSEngine = {
                 self._boardPtr = FSModule._malloc(90 * 4); self._capPtr = FSModule._malloc(90 * 4);
                 self._historyPtr = FSModule._malloc(self._historyCapacity * 16);
                 self._flatBuffer = new Int32Array(90);
-                if (typeof appendDebugLog === 'function') appendDebugLog('✅ FS0927引擎就绪（内存复用优化）');
+                if (typeof appendDebugLog === 'function') appendDebugLog('✅ FS0927引擎就绪（pthread' + (window.PTHREAD_THREADS || 4) + '线程）');
             } else {
                 setTimeout(checkReady, 100);
             }
         };
-        // 启动FSModule
-        if (typeof FSModule === 'function') {
-            FSModule({}).then(function(mod) {
+        // 启动FS0927 pthread多线程版本
+        if (typeof FS0927ModuleMT === 'function') {
+            FS0927ModuleMT().then(function(mod) {
                 FSModule = mod;
                 FSModuleReady = true;
+                if (FSModule._engine_set_threads) FSModule._engine_set_threads(window.PTHREAD_THREADS || 4);
                 checkReady();
             }).catch(function(e) {
-                if (typeof appendDebugLog === 'function') appendDebugLog('❌ FS WASM加载失败: ' + e.message);
+                if (typeof appendDebugLog === 'function') appendDebugLog('❌ FS pthread加载失败: ' + e.message);
             });
         } else if (typeof FSModule === 'object' && FSModule._engine_init) {
             FSModuleReady = true;
@@ -1191,12 +1202,10 @@ var StandardWasmEngine = {
      */
     isReallyReady: function() {
         return typeof SF0930Module !== 'undefined' &&
-               SF0930Module._ready &&
                SF0930Module._engine_init &&
                SF0930Module._malloc &&
                SF0930Module._free &&
-               SF0930Module.setValue &&
-               SF0930Module.UTF8ToString;
+               SF0930Module.setValue;
     },
     load: function() {
         if (this._loading) return;
@@ -1208,7 +1217,7 @@ var StandardWasmEngine = {
                 self._boardPtr = SF0930Module._malloc(90 * 4);
                 self._flatBuffer = new Int32Array(90);
                 SF0930Module._engine_init();
-                if (typeof appendDebugLog === 'function') appendDebugLog('✅ SF0930标准中国象棋引擎就绪（Fairy-Stockfish xiangqi）');
+                if (typeof appendDebugLog === 'function') appendDebugLog('✅ SF0930引擎就绪（pthread' + (window.PTHREAD_THREADS || 4) + '线程）');
                 self._loading = false;
             } else {
                 setTimeout(checkReady, 100);
