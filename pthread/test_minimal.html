@@ -4,13 +4,22 @@
 <meta charset="utf-8">
 <title>pthread最小测试</title>
 <script>
-// SW注册
+// SW注册 - 只在首次安装后刷新一次
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(function(reg) {
         console.log('SW注册成功');
-        if (reg.active) {
-            location.reload();
-        }
+        // 监听新SW安装完成，只刷新一次
+        reg.addEventListener('updatefound', function() {
+            var newWorker = reg.installing;
+            newWorker.addEventListener('statechange', function() {
+                if (newWorker.state === 'activated') {
+                    if (!sessionStorage.getItem('sw_reloaded')) {
+                        sessionStorage.setItem('sw_reloaded', '1');
+                        location.reload();
+                    }
+                }
+            });
+        });
     }).catch(function(e) {
         console.log('SW注册失败:', e);
     });
