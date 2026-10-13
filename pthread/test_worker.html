@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Worker Test</title>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+        console.log('SW注册成功');
+        if (reg.active) {
+            console.log('SW已激活，重新加载');
+            if (!sessionStorage.getItem('sw_reloaded')) {
+                sessionStorage.setItem('sw_reloaded', '1');
+                location.reload();
+            }
+        }
+    }).catch(function(err) {
+        console.log('SW注册失败', err);
+    });
+}
+</script>
+</head>
+<body>
+<h1>Worker Test</h1>
+<div id="status">正在测试...</div>
+<div id="result"></div>
+<script>
+window.onload = function() {
+    setTimeout(function() {
+        console.log('crossOriginIsolated:', window.crossOriginIsolated);
+        document.getElementById('status').textContent = 'crossOriginIsolated=' + window.crossOriginIsolated;
+        
+        // 创建一个简单的worker
+        try {
+            var worker = new Worker('simple_worker.js', {name: 'test-worker'});
+            worker.onmessage = function(e) {
+                document.getElementById('result').textContent += '收到worker消息: ' + JSON.stringify(e.data) + '\n';
+            };
+            worker.onerror = function(e) {
+                document.getElementById('result').textContent += 'worker错误: ' + e.message + ' at ' + e.filename + ':' + e.lineno + '\n';
+            };
+            worker.postMessage({cmd: 'hello'});
+            document.getElementById('result').textContent += 'worker已创建，发送hello\n';
+        } catch(e) {
+            document.getElementById('result').textContent += '创建worker失败: ' + e.message + '\n';
+        }
+    }, 2000);
+};
+</script>
+</body>
+</html>
