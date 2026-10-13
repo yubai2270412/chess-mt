@@ -1,4 +1,4 @@
-// Service Worker - arrayBuffer for all resources to ensure Content-Length
+// Service Worker - match local coop_server.py config (require-corp)
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 
@@ -16,27 +16,30 @@ self.addEventListener('fetch', e => {
     
     e.respondWith(
         fetch(req).then(res => {
-            return res.arrayBuffer().then(buf => {
-                const newHeaders = new Headers(res.headers);
-                newHeaders.set('Content-Length', buf.byteLength);
-                newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
-                
-                if (isHtml) {
-                    newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-                    newHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
+            const newHeaders = new Headers(res.headers);
+            newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+            newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+            newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
+            
+            if (isHtml) {
+                // HTML用arrayBuffer确保Content-Length正确
+                return res.arrayBuffer().then(buf => {
+                    newHeaders.set('Content-Length', buf.byteLength);
                     newHeaders.set('Content-Type', 'text/html; charset=utf-8');
-                } else if (isJs) {
-                    newHeaders.set('Content-Type', 'application/javascript');
-                } else if (isWasm) {
-                    newHeaders.set('Content-Type', 'application/wasm');
-                }
-                
-                return new Response(buf, {
+                    return new Response(buf, {
+                        status: res.status,
+                        statusText: res.statusText,
+                        headers: newHeaders
+                    });
+                });
+            } else {
+                // JS/WASM用流传递，保留原Content-Length
+                return new Response(res.body, {
                     status: res.status,
                     statusText: res.statusText,
                     headers: newHeaders
                 });
-            });
+            }
         }).catch(() => fetch(req))
     );
 });
