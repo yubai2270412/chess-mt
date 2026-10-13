@@ -11,9 +11,9 @@
 
 <!-- 多线程版本：使用外部引擎MT JS文件 -->
 <script>
-// 线程模式检测：URL参数 ?mt=1 为多线程，默认单线程
-window.threadMode = (new URLSearchParams(window.location.search)).get('mt') === '1' ? 'multi' : 'single';
-console.log('线程模式:', window.threadMode);
+// 线程模式：禁用pthread WASM（有OOM问题），统一使用Web Worker多线程
+window.threadMode = 'single';
+console.log('线程模式: Web Worker多线程（pthread已禁用）');
 </script>
 
 <!-- 多线程引擎：动态加载外部JS文件 -->
@@ -38427,7 +38427,7 @@ mergeCurrentGameToGlobal(winner);
             if (threadSelect) {
                 // 同步已保存的线程数设置（多线程模式默认4线程，单线程默认1线程）
                 try {
-                    var defaultThreads = window.threadMode === 'multi' ? '4' : '1';
+                    var defaultThreads = '2'; // 默认2线程Web Worker多线程
                     const savedThreads = localStorage.getItem('yubai_thread_count') || defaultThreads;
                     threadSelect.value = savedThreads;
                     if (threadStatus) threadStatus.textContent = savedThreads === 'auto' ? '⚡ 自动' : '⚡ ' + savedThreads + '线程';
