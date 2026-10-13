@@ -51,7 +51,12 @@
             }
             
             log('正在初始化WASM模块...');
-            var mod = await YBModuleMT();
+            var mod = await YBModuleMT({
+                locateFile: function(path) {
+                    if (path.endsWith('.wasm')) return 'yubai1005_engine_mt.wasm';
+                    return path;
+                }
+            });
             log('WASM模块加载完成，等待导出函数分配...');
             
             await waitForExports(mod, 10000);
@@ -69,13 +74,25 @@
                 log('⚠️ 没有 _engine_set_threads 函数');
             }
             
-            log('设置初始棋盘...');
-            // 中国象棋初始局面FEN
-            var fen = 'rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1';
-            var fenPtr = mod._malloc(fen.length + 1);
-            mod.stringToUTF8(fen, fenPtr, fen.length + 1);
-            mod._engine_set_board(fenPtr);
-            mod._free(fenPtr);
+            log('设置初始棋盘（整数数组）...');
+            var board = new Int32Array([
+                8,9,10,11,12,11,10,9,8,
+                0,0,0,0,0,0,0,0,0,
+                0,13,0,0,0,0,0,13,0,
+                14,0,14,0,14,0,14,0,14,
+                0,0,0,0,0,0,0,0,0,
+                0,0,0,0,0,0,0,0,0,
+                7,0,7,0,7,0,7,0,7,
+                0,6,0,0,0,0,0,6,0,
+                0,0,0,0,0,0,0,0,0,
+                1,2,3,4,5,4,3,2,1
+            ]);
+            var boardPtr = mod._malloc(board.length * 4);
+            for (var i = 0; i < board.length; i++) {
+                mod.setValue(boardPtr + i * 4, board[i], 'i32');
+            }
+            mod._engine_set_board(boardPtr, 0, 0);
+            mod._free(boardPtr);
             log('set_board 完成');
             
             log('思考1秒获取最佳走法...');
