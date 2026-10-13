@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>pthread最小测试</title>
+<script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    if (!navigator.serviceWorker.controller) {
+        navigator.serviceWorker.register('sw.js').then(function(reg) {
+            var worker = reg.installing || reg.waiting || reg.active;
+            if (worker) {
+                worker.addEventListener('statechange', function() {
+                    if (worker.state === 'activated') window.location.reload();
+                });
+                if (worker.state === 'activated') window.location.reload();
+            }
+        }).catch(function() {});
+    }
+}
+</script>
+<script src="yubai1005_engine_mt.js"></script>
+</head>
+<body>
+<h1>pthread最小测试</h1>
+<div id="result">加载中...</div>
+<script>
+window.addEventListener('load', function() {
+    document.getElementById('result').innerHTML = 
+        'crossOriginIsolated=' + window.crossOriginIsolated + 
+        '<br>YBModuleMT=' + typeof YBModuleMT +
+        '<br>SharedArrayBuffer=' + typeof SharedArrayBuffer;
+    
+    if (typeof YBModuleMT === 'function') {
+        YBModuleMT().then(function(mod) {
+            document.getElementById('result').innerHTML += 
+                '<br>Module加载成功! has _engine_init=' + (typeof mod._engine_init === 'function') +
+                '<br>has _engine_set_threads=' + (typeof mod._engine_set_threads === 'function');
+        }).catch(function(e) {
+            document.getElementById('result').innerHTML += '<br>Module加载失败: ' + e.message;
+        });
+    }
+});
+</script>
+</body>
+</html>
