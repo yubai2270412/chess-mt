@@ -49,7 +49,8 @@ q:_emscripten_resize_heap,
 r:function(){return 0},
 s:function(){},
 t:function(){}
-}a:___cxa_throw,
+}
+var wasmExports;createWasm().then(function(exports){wasmExports=exports;return run();}).catch(function(e){console.error("alpha0823 init error:",e);});a:___cxa_throw,
 b:_emscripten_resize_heap,
 c:_clock_time_get,
 d:__abort_js,
