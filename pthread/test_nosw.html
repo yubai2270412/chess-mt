@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>pthread测试 - 无SW</title>
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+<meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+</head>
+<body>
+<h1>pthread测试 - 无SW（meta标签COOP/COEP）</h1>
+<div id="status">加载中...</div>
+<div id="result"></div>
+<script src="yubai1005_engine_mt.js"></script>
+<script>
+window.addEventListener('load', function() {
+    document.getElementById('status').textContent = '页面加载完成，crossOriginIsolated=' + window.crossOriginIsolated;
+    
+    if (typeof YBModuleMT !== 'function') {
+        document.getElementById('result').textContent = 'YBModuleMT未定义';
+        return;
+    }
+    
+    document.getElementById('status').textContent = '正在初始化pthread...';
+    
+    var startTime = Date.now();
+    YBModuleMT({
+        print: function(t) { document.getElementById('result').textContent += t + '\n'; },
+        printErr: function(t) { document.getElementById('result').textContent += 'ERR: ' + t + '\n'; },
+        monitorRunDependencies: function(n) {
+            document.getElementById('result').textContent += '[deps=' + n + ']\n';
+        },
+        onRuntimeInitialized: function() {
+            document.getElementById('result').textContent += '[onRuntimeInitialized]\n';
+        }
+    }).then(function(mod) {
+        var elapsed = Date.now() - startTime;
+        document.getElementById('status').textContent = 'pthread初始化成功! 耗时' + elapsed + 'ms';
+        
+        if (mod._engine_init) {
+            mod._engine_init();
+            document.getElementById('result').textContent += 'engine_init成功\n';
+            
+            if (mod._engine_set_threads) {
+                mod._engine_set_threads(2);
+                document.getElementById('result').textContent += 'set_threads(2)成功\n';
+            }
+            
+            var boardPtr = mod._malloc(90 * 4);
+            var histPtr = mod._malloc(200 * 16);
+            mod._engine_set_board(boardPtr, 0);
+            mod._engine_set_history(histPtr, 0);
+            
+            document.getElementById('result').textContent += '开始搜索...\n';
+            var move = mod._engine_get_best_move(1000);
+            document.getElementById('result').textContent += '搜索完成，走法=' + move + '\n';
+            document.getElementById('result').textContent += '节点数=' + mod._engine_get_node_count() + '\n';
+        }
+    }).catch(function(e) {
+        document.getElementById('status').textContent = 'pthread初始化失败: ' + e.message;
+        document.getElementById('result').textContent += e.stack + '\n';
+    });
+    
+    setTimeout(function() {
+        if (document.getElementById('status').textContent.indexOf('成功') === -1) {
+            document.getElementById('status').textContent += ' (10秒超时)';
+        }
+    }, 10000);
+});
+</script>
+</body>
+</html>
