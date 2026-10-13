@@ -15,10 +15,11 @@ self.addEventListener('fetch', e => {
     if (!isHtml && !isJs && !isWasm) return;
     
     e.respondWith(
-        fetch(req).then(res => {
+        fetch(req, {cache: 'no-cache'}).then(res => {
             return res.arrayBuffer().then(buf => {
                 const newHeaders = new Headers(res.headers);
                 newHeaders.set('Content-Length', buf.byteLength);
+                newHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate');
                 newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
                 newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
                 newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
