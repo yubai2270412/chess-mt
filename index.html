@@ -21940,7 +21940,7 @@ waitReady(() => { console.log('Worker WASM引擎就绪'); });
                                     const hist = (typeof history !== 'undefined' && history) ? history : (typeof moveHistory !== 'undefined' ? moveHistory : null);
                                     try {
                                         // alpha0823：强制同步搜索，不使用Worker异步（用户要求）
-                                        if (isActuallyAlpha || (window.jieqiMode && !isActuallyPFOld)) {
+                                        if (isActuallyAlpha || isActuallyFS || (window.jieqiMode && !isActuallyPFOld)) {
                                             // 先等待走棋动画播放完成（CSS transition 300ms），避免同步搜索阻塞主线程导致动画卡顿
                                             if (typeof appendDebugLog === 'function') appendDebugLog('⏳ ' + _curEngName + '等待走棋动画完成（300ms）...');
                                             await new Promise(r => setTimeout(r, 300));
