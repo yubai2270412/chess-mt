@@ -16,6 +16,10 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }
 }
 </script>
+<script src="yubai1005_engine_mt.js"></script>
+<script src="fs0927_engine_mt.js"></script>
+<script src="sf0930_engine_mt.js"></script>
+<script src="alpha0823_engine_mt.js"></script>
 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -1540,16 +1544,11 @@ var PikafishEngine = {
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=CwTeXKai&family=Long+Cang&family=Zhi+Mang+Xing&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
 <script>
 // 注册Service Worker以支持COOP/COEP（SharedArrayBuffer）
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW注册失败:', e));
-}
+// SW已在页面顶部注册
 // 全局线程数
 window.PTHREAD_THREADS = 4;
 </script>
-<script src="yubai1005_engine_mt.js"></script>
-<script src="fs0927_engine_mt.js"></script>
-<script src="sf0930_engine_mt.js"></script>
-<script src="alpha0823_engine_mt.js"></script>
+<!-- pthread JS moved to head -->
 
 </head>
 <body class="theme-wood">
