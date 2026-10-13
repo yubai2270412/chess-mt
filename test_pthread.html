@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>yubai1005 pthread多线程测试</title>
+</head>
+<body>
+<h1>yubai1005 pthread多线程测试</h1>
+<div id="status">加载中...</div>
+<div id="result"></div>
+<script src="yubai1005_engine_mt.js"></script>
+<script>
+var statusEl = document.getElementById('status');
+var resultEl = document.getElementById('result');
+
+function log(msg) {
+    statusEl.innerHTML += '<br>' + msg;
+    console.log(msg);
+}
+
+// 标准初始局面
+function makeBoard() {
+    var bd = [];
+    for (var r = 0; r < 10; r++) bd.push(new Array(9).fill(null));
+    bd[0][0]={type:'rook',color:'black'};bd[0][1]={type:'knight',color:'black'};bd[0][2]={type:'elephant',color:'black'};bd[0][3]={type:'advisor',color:'black'};bd[0][4]={type:'king',color:'black'};bd[0][5]={type:'advisor',color:'black'};bd[0][6]={type:'elephant',color:'black'};bd[0][7]={type:'knight',color:'black'};bd[0][8]={type:'rook',color:'black'};
+    bd[2][1]={type:'cannon',color:'black'};bd[2][7]={type:'cannon',color:'black'};
+    bd[3][0]={type:'pawn',color:'black'};bd[3][2]={type:'pawn',color:'black'};bd[3][4]={type:'pawn',color:'black'};bd[3][6]={type:'pawn',color:'black'};bd[3][8]={type:'pawn',color:'black'};
+    bd[6][0]={type:'pawn',color:'red'};bd[6][2]={type:'pawn',color:'red'};bd[6][4]={type:'pawn',color:'red'};bd[6][6]={type:'pawn',color:'red'};bd[6][8]={type:'pawn',color:'red'};
+    bd[7][1]={type:'cannon',color:'red'};bd[7][7]={type:'cannon',color:'red'};
+    bd[9][0]={type:'rook',color:'red'};bd[9][1]={type:'knight',color:'red'};bd[9][2]={type:'elephant',color:'red'};bd[9][3]={type:'advisor',color:'red'};bd[9][4]={type:'king',color:'red'};bd[9][5]={type:'advisor',color:'red'};bd[9][6]={type:'elephant',color:'red'};bd[9][7]={type:'knight',color:'red'};bd[9][8]={type:'rook',color:'red'};
+    return bd;
+}
+
+function boardToFlat(bd) {
+    var flat = new Array(90).fill(0);
+    var pieceMap = {king:1, advisor:2, elephant:3, knight:4, rook:5, cannon:6, pawn:7};
+    for (var r = 0; r < 10; r++) {
+        for (var c = 0; c < 9; c++) {
+            if (bd[r][c]) {
+                var v = pieceMap[bd[r][c].type];
+                flat[r*9+c] = bd[r][c].color === 'red' ? v : -v;
+            }
+        }
+    }
+    return flat;
+}
+
+YBModuleMT({onRuntimeInitialized: function() {
+    log('运行时初始化完成');
+}}).then(function(mod) {
+    log('WASM加载成功');
+    log('SharedArrayBuffer支持: ' + (typeof SharedArrayBuffer !== 'undefined'));
+    window._mod = mod;
+    // pthread模式下用setValue，直接开始测试
+    startTest(mod);
+}).catch(function(e) {
+    log('加载失败: ' + e.message);
+    log(e.stack);
+});
+
+function startTest(mod) {
+    // 初始化引擎
+    mod._engine_init();
+    log('引擎初始化完成');
+    
+    // 设置线程数
+    if (mod._engine_set_threads) {
+        mod._engine_set_threads(1);
+        log('设置1线程');
+    }
+    
+    // 设置局面
+    var bd = makeBoard();
+    var flat = boardToFlat(bd);
+    var flatPtr = mod._malloc(90 * 4);
+    for (var i = 0; i < 90; i++) {
+        mod.setValue(flatPtr + i * 4, flat[i], 'i32');
+    }
+    mod._engine_set_board(flatPtr, 1, 0);
+    log('局面设置完成');
+    
+    // 测试1线程
+    log('--- 1线程测试 ---');
+    var t1 = performance.now();
+    var mv1 = mod._engine_get_best_move(99, 1000);
+    var t2 = performance.now();
+    var nodes1 = Number(mod._engine_get_node_count());
+    log('1线程: 走法=' + mv1 + ' 节点=' + nodes1 + ' 用时=' + (t2-t1).toFixed(0) + 'ms');
+    
+    // 测试4线程
+    if (mod._engine_set_threads) {
+        mod._engine_set_threads(4);
+        log('--- 4线程测试 ---');
+        mod._engine_set_board(flatPtr, 1, 0);
+        var t3 = performance.now();
+        var mv4 = mod._engine_get_best_move(99, 1000);
+        var t4 = performance.now();
+        var nodes4 = Number(mod._engine_get_node_count());
+        log('4线程: 走法=' + mv4 + ' 节点=' + nodes4 + ' 用时=' + (t4-t3).toFixed(0) + 'ms');
+        log('加速比: ' + (nodes4/nodes1).toFixed(2) + 'x');
+        
+        resultEl.innerHTML = '测试完成！1线程节点=' + nodes1 + '，4线程节点=' + nodes4 + '，加速比=' + (nodes4/nodes1).toFixed(2) + 'x';
+    }
+}
+</script>
+</body>
+</html>

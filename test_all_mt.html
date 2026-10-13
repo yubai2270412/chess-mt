@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>所有引擎pthread多线程测试</title>
+<style>
+body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+.engine { margin: 10px 0; padding: 10px; border: 1px solid #333; border-radius: 5px; }
+.pass { color: #0f0; }
+.fail { color: #f00; }
+</style>
+</head>
+<body>
+<h1>所有引擎pthread多线程测试</h1>
+<div id="results"></div>
+
+<script src="yubai1005_engine_mt.js"></script>
+<script src="fs0927_engine_mt.js"></script>
+<script src="sf0930_engine_mt.js"></script>
+<script src="alpha0823_engine_mt.js"></script>
+<script src="pf1006_engine_mt.js"></script>
+
+<script>
+var resultsEl = document.getElementById('results');
+
+function makeBoard() {
+    var bd = [];
+    for (var r = 0; r < 10; r++) bd.push(new Array(9).fill(null));
+    bd[0][0]={type:'rook',color:'black'};bd[0][1]={type:'knight',color:'black'};bd[0][2]={type:'elephant',color:'black'};bd[0][3]={type:'advisor',color:'black'};bd[0][4]={type:'king',color:'black'};bd[0][5]={type:'advisor',color:'black'};bd[0][6]={type:'elephant',color:'black'};bd[0][7]={type:'knight',color:'black'};bd[0][8]={type:'rook',color:'black'};
+    bd[2][1]={type:'cannon',color:'black'};bd[2][7]={type:'cannon',color:'black'};
+    bd[3][0]={type:'pawn',color:'black'};bd[3][2]={type:'pawn',color:'black'};bd[3][4]={type:'pawn',color:'black'};bd[3][6]={type:'pawn',color:'black'};bd[3][8]={type:'pawn',color:'black'};
+    bd[6][0]={type:'pawn',color:'red'};bd[6][2]={type:'pawn',color:'red'};bd[6][4]={type:'pawn',color:'red'};bd[6][6]={type:'pawn',color:'red'};bd[6][8]={type:'pawn',color:'red'};
+    bd[7][1]={type:'cannon',color:'red'};bd[7][7]={type:'cannon',color:'red'};
+    bd[9][0]={type:'rook',color:'red'};bd[9][1]={type:'knight',color:'red'};bd[9][2]={type:'elephant',color:'red'};bd[9][3]={type:'advisor',color:'red'};bd[9][4]={type:'king',color:'red'};bd[9][5]={type:'advisor',color:'red'};bd[9][6]={type:'elephant',color:'red'};bd[9][7]={type:'knight',color:'red'};bd[9][8]={type:'rook',color:'red'};
+    return bd;
+}
+
+function boardToFlat(bd) {
+    var flat = new Array(90).fill(0);
+    var pieceMap = {king:1, advisor:2, elephant:3, knight:4, rook:5, cannon:6, pawn:7};
+    for (var r = 0; r < 10; r++) for (var c = 0; c < 9; c++) {
+        if (bd[r][c]) { var v = pieceMap[bd[r][c].type]; flat[r*9+c] = bd[r][c].color === 'red' ? v : -v; }
+    }
+    return flat;
+}
+
+function testEngine(name, moduleFn, moduleName) {
+    return new Promise(function(resolve) {
+        var div = document.createElement('div');
+        div.className = 'engine';
+        div.innerHTML = '<h3>' + name + '</h3><div id="log_' + name + '">加载中...</div>';
+        resultsEl.appendChild(div);
+        var logEl = document.getElementById('log_' + name);
+        
+        function log(msg) { logEl.innerHTML += '<br>' + msg; console.log(name + ': ' + msg); }
+        
+        try {
+            moduleFn().then(function(mod) {
+                log('WASM加载成功');
+                if (!mod._engine_init) { log('<span class="fail">缺少engine_init</span>'); resolve(false); return; }
+                mod._engine_init();
+                log('引擎初始化完成');
+                
+                var bd = makeBoard();
+                var flat = boardToFlat(bd);
+                var flatPtr = mod._malloc(90 * 4);
+                for (var i = 0; i < 90; i++) mod.setValue(flatPtr + i * 4, flat[i], 'i32');
+                
+                // 1线程
+                if (mod._engine_set_threads) mod._engine_set_threads(1);
+                mod._engine_set_board(flatPtr, 1, 0);
+                var t1 = performance.now();
+                var mv1 = mod._engine_get_best_move(99, 1000);
+                var t2 = performance.now();
+                var nodes1 = Number(mod._engine_get_node_count());
+                log('1线程: 走法=' + mv1 + ' 节点=' + nodes1 + ' 用时=' + (t2-t1).toFixed(0) + 'ms');
+                
+                // 4线程
+                if (mod._engine_set_threads) {
+                    mod._engine_set_threads(4);
+                    mod._engine_set_board(flatPtr, 1, 0);
+                    var t3 = performance.now();
+                    var mv4 = mod._engine_get_best_move(99, 1000);
+                    var t4 = performance.now();
+                    var nodes4 = Number(mod._engine_get_node_count());
+                    var ratio = nodes4 / Math.max(nodes1, 1);
+                    log('4线程: 走法=' + mv4 + ' 节点=' + nodes4 + ' 用时=' + (t4-t3).toFixed(0) + 'ms');
+                    log('<span class="pass">加速比: ' + ratio.toFixed(2) + 'x</span>');
+                    resolve(true);
+                } else {
+                    log('<span class="fail">不支持set_threads</span>');
+                    resolve(false);
+                }
+            }).catch(function(e) {
+                log('<span class="fail">加载失败: ' + e.message + '</span>');
+                resolve(false);
+            });
+        } catch(e) {
+            log('<span class="fail">异常: ' + e.message + '</span>');
+            resolve(false);
+        }
+    });
+}
+
+async function runAllTests() {
+    var engines = [
+        {name: 'yubai1005', fn: YBModuleMT},
+        {name: 'FS0927', fn: FS0927ModuleMT},
+        {name: 'SF0930', fn: SF0930ModuleMT || (typeof SF0930Module !== 'undefined' ? SF0930Module : null)},
+        {name: 'alpha0823', fn: Alpha0823ModuleMT || (typeof AlphaModule !== 'undefined' ? AlphaModule : null)},
+        {name: 'pf1006', fn: PF1006ModuleMT || (typeof PFModule !== 'undefined' ? PFModule : null)}
+    ];
+    
+    for (var i = 0; i < engines.length; i++) {
+        var e = engines[i];
+        if (!e.fn) {
+            var div = document.createElement('div');
+            div.className = 'engine';
+            div.innerHTML = '<h3>' + e.name + '</h3><div class="fail">Module未定义</div>';
+            resultsEl.appendChild(div);
+            continue;
+        }
+        await testEngine(e.name, e.fn);
+    }
+    
+    var done = document.createElement('h2');
+    done.innerHTML = '全部测试完成！';
+    resultsEl.appendChild(done);
+}
+
+runAllTests();
+</script>
+</body>
+</html>
