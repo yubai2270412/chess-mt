@@ -20863,7 +20863,10 @@ function countAttackers(row, col, color, bd) {
                         if (s.textContent.indexOf('Module.wasmBinaryData') >= 0 && s.textContent.indexOf('WasmEngine') < 0) {
                             alphaCode = s.textContent;
                         }
-                        if (s.textContent.indexOf('WasmEngine') >= 0 && s.textContent.indexOf('_engine_get_best_move') >= 0) {
+                        // 只提取引擎定义块（含var WasmEngine定义），排除含FairyEngine的主游戏逻辑块
+                        if ((s.textContent.indexOf('var WasmEngine') >= 0 || s.textContent.indexOf('const WasmEngine') >= 0) &&
+                            s.textContent.indexOf('_engine_get_best_move') >= 0 &&
+                            s.textContent.indexOf('FairyEngine') < 0) {
                             wasmCode = s.textContent;
                         }
                     }
@@ -21194,7 +21197,14 @@ self.onmessage = function(e) {
                         score = (data.engine === 'fs' || data.engine === 'yubai1005' || data.engine === 'pf1006' || data.engine === 'pf1006_full') ? engine.getEvalScore() : engine.getEvalScore(data.bd, data.color);
                     }
                 } catch(e) {}
-                self.postMessage({ type: 'fullSearchResult', move: mv, score: score, nodes: nodes, elapsed: searchElapsed, retries: fsRetry, taskId: data.taskId, generation: data.generation });
+                // 确保所有字段都是Number，防止BigInt导致postMessage序列化失败
+                const safeScore = (typeof score === 'bigint') ? Number(score) : (score || 0);
+                const safeMove = mv ? {
+                    fromRow: Number(mv.fromRow||0), fromCol: Number(mv.fromCol||0),
+                    toRow: Number(mv.toRow||0), toCol: Number(mv.toCol||0),
+                    score: (typeof mv.score === 'bigint') ? Number(mv.score) : (mv.score||0)
+                } : null;
+                self.postMessage({ type: 'fullSearchResult', move: safeMove, score: safeScore, nodes: nodes, elapsed: searchElapsed, retries: fsRetry, taskId: data.taskId, generation: data.generation });
                 } // end doSearchActual
             } catch(err) {
                 self.postMessage({ type: 'fullSearchResult', error: err.message, taskId: data.taskId, generation: data.generation });
