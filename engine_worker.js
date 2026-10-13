@@ -52,8 +52,19 @@ self.onmessage = async function(e) {
         try {
             if (!initialized) await init();
             
-            // 设置棋盘
-            var board = new Int32Array(data.board);
+            // 初始棋盘：正数=红，负数=黑，1=将,2=士,3=象,4=马,5=车,6=炮,7=兵
+            var board = new Int32Array([
+                -5,-4,-3,-2,-1,-2,-3,-4,-5,
+                0,0,0,0,0,0,0,0,0,
+                0,-6,0,0,0,0,0,-6,0,
+                -7,0,-7,0,-7,0,-7,0,-7,
+                0,0,0,0,0,0,0,0,0,
+                0,0,0,0,0,0,0,0,0,
+                7,0,7,0,7,0,7,0,7,
+                0,6,0,0,0,0,0,6,0,
+                0,0,0,0,0,0,0,0,0,
+                5,4,3,2,1,2,3,4,5
+            ]);
             var boardPtr = mod._malloc(board.length * 4);
             for (var i = 0; i < board.length; i++) {
                 mod.setValue(boardPtr + i * 4, board[i], 'i32');
@@ -66,9 +77,9 @@ self.onmessage = async function(e) {
                 mod._engine_set_threads(1);
             }
             
-            // 搜索
+            // 搜索 - 注意：engine_get_best_move(maxDepth, timeMs)需要两个参数
             var startTime = Date.now();
-            var movePtr = mod._engine_get_best_move(data.time || 1000);
+            var movePtr = mod._engine_get_best_move(0, data.time || 1000);  // maxDepth=0不限制，timeMs=1000
             var move = mod.UTF8ToString(movePtr);
             var elapsed = Date.now() - startTime;
             var nodes = mod._engine_get_node_count ? mod._engine_get_node_count() : 0;
