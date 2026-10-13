@@ -1,4 +1,4 @@
-// Service Worker - COOP/COEP for HTML, CORP for JS/WASM
+// Service Worker - arrayBuffer for all resources to ensure Content-Length
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 
@@ -16,29 +16,27 @@ self.addEventListener('fetch', e => {
     
     e.respondWith(
         fetch(req).then(res => {
-            const newHeaders = new Headers(res.headers);
-            
-            if (isHtml) {
-                newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-                newHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
+            return res.arrayBuffer().then(buf => {
+                const newHeaders = new Headers(res.headers);
+                newHeaders.set('Content-Length', buf.byteLength);
                 newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
-                return res.arrayBuffer().then(buf => {
-                    newHeaders.set('Content-Length', buf.byteLength);
+                
+                if (isHtml) {
+                    newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+                    newHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
                     newHeaders.set('Content-Type', 'text/html; charset=utf-8');
-                    return new Response(buf, {
-                        status: res.status,
-                        statusText: res.statusText,
-                        headers: newHeaders
-                    });
-                });
-            } else {
-                newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
-                return new Response(res.body, {
+                } else if (isJs) {
+                    newHeaders.set('Content-Type', 'application/javascript');
+                } else if (isWasm) {
+                    newHeaders.set('Content-Type', 'application/wasm');
+                }
+                
+                return new Response(buf, {
                     status: res.status,
                     statusText: res.statusText,
                     headers: newHeaders
                 });
-            }
+            });
         }).catch(() => fetch(req))
     );
 });
