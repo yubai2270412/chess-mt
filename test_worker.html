@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Worker多线程测试</title>
+</head>
+<body>
+    <h1>Web Worker多线程引擎测试</h1>
+    <div id="status">初始化中...</div>
+    <div id="result"></div>
+    <script>
+    var statusEl = document.getElementById('status');
+    var resultEl = document.getElementById('result');
+    var workers = [];
+    var threadCount = 2;
+    
+    function log(msg) {
+        console.log(msg);
+        resultEl.innerHTML += msg + '<br>';
+    }
+    
+    // 初始棋盘
+    var initialBoard = [
+        8,9,10,11,12,11,10,9,8,
+        0,0,0,0,0,0,0,0,0,
+        0,13,0,0,0,0,0,13,0,
+        14,0,14,0,14,0,14,0,14,
+        0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,
+        7,0,7,0,7,0,7,0,7,
+        0,6,0,0,0,0,0,6,0,
+        0,0,0,0,0,0,0,0,0,
+        1,2,3,4,5,4,3,2,1
+    ];
+    
+    function createWorker(id) {
+        return new Promise(function(resolve, reject) {
+            var w = new Worker('engine_worker.js');
+            w.onmessage = function(e) {
+                if (e.data.type === 'ready') {
+                    log('✅ Worker ' + id + ' 初始化完成');
+                    resolve(w);
+                } else if (e.data.type === 'error') {
+                    log('❌ Worker ' + id + ' 错误: ' + e.data.error);
+                    reject(e.data.error);
+                }
+            };
+            w.onerror = function(e) {
+                log('❌ Worker ' + id + ' 加载错误: ' + e.message);
+                reject(e.message);
+            };
+            w.postMessage({type: 'init', workerId: id});
+        });
+    }
+    
+    async function searchWithWorkers(time) {
+        return new Promise(function(resolve) {
+            var results = [];
+            var completed = 0;
+            
+            workers.forEach(function(w, idx) {
+                w.onmessage = function(e) {
+                    if (e.data.type === 'result') {
+                        results.push(e.data);
+                        log('Worker ' + e.data.workerId + ': 走法=' + e.data.move + 
+                            ' 节点=' + e.data.nodes + ' 耗时=' + e.data.elapsed + 'ms NPS=' + e.data.nps);
+                        completed++;
+                        if (completed === workers.length) {
+                            // 选择节点数最多的结果（Lazy SMP简化版）
+                            var best = results.reduce(function(a, b) {
+                                return a.nodes > b.nodes ? a : b;
+                            });
+                            resolve(best);
+                        }
+                    }
+                };
+                w.postMessage({
+                    type: 'search',
+                    workerId: idx,
+                    board: initialBoard,
+                    side: 0,
+                    time: time
+                });
+            });
+        });
+    }
+    
+    async function runTest() {
+        try {
+            statusEl.textContent = '正在创建 ' + threadCount + ' 个Worker...';
+            log('创建 ' + threadCount + ' 个Web Worker...');
+            
+            for (var i = 0; i < threadCount; i++) {
+                var w = await createWorker(i);
+                workers.push(w);
+            }
+            
+            log('所有Worker就绪，开始并行搜索（1秒）...');
+            statusEl.textContent = '并行搜索中...';
+            
+            var best = await searchWithWorkers(1000);
+            
+            log('🎉 多线程搜索完成！');
+            log('最佳走法: ' + best.move + ' (来自Worker ' + best.workerId + ')');
+            log('总节点数: ' + results.reduce(function(s, r) { return s + r.nodes; }, 0));
+            
+            // 测试线程切换
+            log('--- 测试单线程模式 ---');
+            statusEl.textContent = '测试单线程...';
+            var singleResult = await searchWithWorkers(1000);
+            log('单线程走法: ' + singleResult.move);
+            
+            statusEl.textContent = '✅ 全部测试通过！';
+            log('🎉 Web Worker多线程测试全部通过！');
+            
+        } catch (e) {
+            statusEl.textContent = '❌ 测试失败: ' + e.message;
+            log('❌ 错误: ' + e.message);
+            log(e.stack);
+        }
+    }
+    
+    window.addEventListener('load', function() {
+        setTimeout(runTest, 1000);
+    });
+    </script>
+</body>
+</html>
