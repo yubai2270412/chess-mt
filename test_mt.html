@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多线程WASM测试</title>
+    <script>
+    window.coi = { doReload: false };
+    </script>
+    <script src="coi-serviceworker.js"></script>
+</head>
+<body>
+    <h1>多线程WASM引擎测试</h1>
+    <div id="status">初始化中...</div>
+    <div id="result"></div>
+    <script src="yubai1005_engine_mt.js"></script>
+    <script>
+    var statusEl = document.getElementById('status');
+    var resultEl = document.getElementById('result');
+    
+    function log(msg) {
+        console.log(msg);
+        resultEl.innerHTML += msg + '<br>';
+    }
+    
+    function waitForExports(mod, timeout) {
+        return new Promise(function(resolve, reject) {
+            var start = Date.now();
+            function check() {
+                if (mod._engine_init && mod._engine_set_board && mod._engine_get_best_move) {
+                    resolve();
+                } else if (Date.now() - start > timeout) {
+                    reject(new Error('等待导出函数超时'));
+                } else {
+                    setTimeout(check, 200);
+                }
+            }
+            check();
+        });
+    }
+    
+    async function runTest() {
+        try {
+            statusEl.textContent = 'crossOriginIsolated: ' + window.crossOriginIsolated;
+            log('crossOriginIsolated: ' + window.crossOriginIsolated);
+            
+            if (!window.crossOriginIsolated) {
+                log('⚠️ 跨域隔离未生效，多线程可能无法工作');
+                log('刷新页面后重试');
+                return;
+            }
+            
+            log('正在初始化WASM模块...');
+            var mod = await YBModuleMT();
+            log('WASM模块加载完成，等待导出函数分配...');
+            
+            await waitForExports(mod, 10000);
+            log('导出函数已就绪');
+            
+            log('调用 engine_init...');
+            mod._engine_init();
+            log('engine_init 完成');
+            
+            log('设置线程数为4...');
+            if (mod._engine_set_threads) {
+                mod._engine_set_threads(4);
+                log('set_threads(4) 完成');
+            } else {
+                log('⚠️ 没有 _engine_set_threads 函数');
+            }
+            
+            log('设置初始棋盘...');
+            // 中国象棋初始局面FEN
+            var fen = 'rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1';
+            var fenPtr = mod._malloc(fen.length + 1);
+            mod.stringToUTF8(fen, fenPtr, fen.length + 1);
+            mod._engine_set_board(fenPtr);
+            mod._free(fenPtr);
+            log('set_board 完成');
+            
+            log('思考1秒获取最佳走法...');
+            var movePtr = mod._engine_get_best_move(1000);
+            var move = mod.UTF8ToString(movePtr);
+            log('✅ 最佳走法: ' + move);
+            
+            log('测试线程切换为2...');
+            if (mod._engine_set_threads) {
+                mod._engine_set_threads(2);
+                var movePtr2 = mod._engine_get_best_move(1000);
+                var move2 = mod.UTF8ToString(movePtr2);
+                log('✅ 2线程最佳走法: ' + move2);
+            }
+            
+            log('测试线程切换为1...');
+            if (mod._engine_set_threads) {
+                mod._engine_set_threads(1);
+                var movePtr3 = mod._engine_get_best_move(1000);
+                var move3 = mod.UTF8ToString(movePtr3);
+                log('✅ 1线程最佳走法: ' + move3);
+            }
+            
+            statusEl.textContent = '✅ 全部测试通过！';
+            log('🎉 多线程WASM测试全部通过！');
+            
+        } catch (e) {
+            statusEl.textContent = '❌ 测试失败: ' + e.message;
+            log('❌ 错误: ' + e.message);
+            log(e.stack);
+        }
+    }
+    
+    window.addEventListener('load', function() {
+        setTimeout(runTest, 2000);
+    });
+    </script>
+</body>
+</html>
