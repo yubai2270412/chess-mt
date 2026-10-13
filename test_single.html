@@ -52,12 +52,24 @@
             mod._engine_init();
             log('engine_init 完成');
             
-            log('设置初始棋盘...');
-            var fen = 'rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1';
-            var fenPtr = mod._malloc(fen.length + 1);
-            mod.stringToUTF8(fen, fenPtr, fen.length + 1);
-            mod._engine_set_board(fenPtr);
-            mod._free(fenPtr);
+            log('设置初始棋盘（整数数组）...');
+            // 中国象棋初始局面：0=空, 1=红车,2=红马,3=红象,4=红士,5=红帅,6=红炮,7=红兵, 8=黑车,9=黑马,10=黑象,11=黑士,12=黑将,13=黑炮,14=黑卒
+            var board = new Int32Array([
+                8,9,10,11,12,11,10,9,8,
+                0,0,0,0,0,0,0,0,0,
+                0,13,0,0,0,0,0,13,0,
+                14,0,14,0,14,0,14,0,14,
+                0,0,0,0,0,0,0,0,0,
+                0,0,0,0,0,0,0,0,0,
+                7,0,7,0,7,0,7,0,7,
+                0,6,0,0,0,0,0,6,0,
+                0,0,0,0,0,0,0,0,0,
+                1,2,3,4,5,4,3,2,1
+            ]);
+            var boardPtr = mod._malloc(board.length * 4);
+            mod.HEAP32.set(board, boardPtr >> 2);
+            mod._engine_set_board(boardPtr, 0, 0);  // side=0红方, hidden=0(null)
+            mod._free(boardPtr);
             log('set_board 完成');
             
             log('思考1秒获取最佳走法...');
