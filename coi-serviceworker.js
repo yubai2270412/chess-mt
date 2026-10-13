@@ -20,6 +20,11 @@ if (typeof window === 'undefined') {
             return;
         }
 
+        // 只拦截导航请求（HTML页面），资源请求（WASM/JS/CSS/图片）直接通过
+        if (event.request.mode !== "navigate") {
+            return;
+        }
+
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
