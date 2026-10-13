@@ -28519,7 +28519,7 @@ function updateScoreBar() {
                                 const useAsyncForWinrate = typeof FairyEngine !== 'undefined' && FairyEngine.workersReady && FairyEngine.workers.length > 0;
                                 if (useAsyncForWinrate) {
                                     try {
-                                        const result = await FairyEngine.searchFullAsync(board, currentTurn, 500, 20, hist, engineType);
+                                        const result = await FairyEngine.searchFullAsync(board, currentTurn, 200, 20, hist, engineType);
                                         if (result && myToken === scoreBarSearchToken && typeof result.score === 'number') {
                                             evalScore = currentTurn === RED ? result.score : -result.score;
                                         }
@@ -28531,7 +28531,7 @@ function updateScoreBar() {
                                         if (myToken !== scoreBarSearchToken || gameOver) return;
                                         try {
                                             if (searchEngine && searchEngine.getBestMove) {
-                                                const _mv = searchEngine.getBestMove(board, currentTurn, 500, 20, hist);
+                                                const _mv = searchEngine.getBestMove(board, currentTurn, 200, 20, hist);
                                                 let _score = null;
                                                 if (_mv && typeof _mv.score === 'number' && _mv.score !== 0) {
                                                     _score = currentTurn === RED ? _mv.score : -_mv.score;
@@ -28544,7 +28544,7 @@ function updateScoreBar() {
                                                 }
                                             }
                                         } catch(e) { console.warn('胜率延迟同步失败:', e.message); }
-                                    }, 400); // 等走棋动画完成后再搜索，不阻塞动画
+                                    }, 100); // 等走棋动画完成后再搜索，不阻塞动画
                                 }
                                 // 异步搜索成功立即更新，延迟同步在setTimeout内更新
                                 if (evalScore !== null && myToken === scoreBarSearchToken) {
