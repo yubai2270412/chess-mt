@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>pthread最小测试</title>
+<script>
+// SW注册
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+        console.log('SW注册成功');
+        if (reg.active) {
+            location.reload();
+        }
+    }).catch(function(e) {
+        console.log('SW注册失败:', e);
+    });
+}
+</script>
+</head>
+<body>
+<h1>pthread最小测试页面</h1>
+<div id="status">加载中...</div>
+<div id="result"></div>
+<script src="yubai1005_engine_mt.js"></script>
+<script>
+window.addEventListener('load', function() {
+    document.getElementById('status').textContent = '页面加载完成，crossOriginIsolated=' + window.crossOriginIsolated;
+    
+    if (typeof YBModuleMT !== 'function') {
+        document.getElementById('result').textContent = 'YBModuleMT未定义';
+        return;
+    }
+    
+    document.getElementById('status').textContent = '正在初始化pthread...';
+    
+    var startTime = Date.now();
+    YBModuleMT({
+        print: function(t) { document.getElementById('result').textContent += t + '\n'; },
+        printErr: function(t) { document.getElementById('result').textContent += 'ERR: ' + t + '\n'; }
+    }).then(function(mod) {
+        var elapsed = Date.now() - startTime;
+        document.getElementById('status').textContent = 'pthread初始化成功! 耗时' + elapsed + 'ms';
+        
+        // 测试引擎
+        if (mod._engine_init) {
+            mod._engine_init();
+            document.getElementById('result').textContent += 'engine_init成功\n';
+            
+            if (mod._engine_set_threads) {
+                mod._engine_set_threads(2);
+                document.getElementById('result').textContent += 'set_threads(2)成功\n';
+            }
+            
+            // 测试搜索
+            var boardPtr = mod._malloc(90 * 4);
+            var histPtr = mod._malloc(200 * 16);
+            mod._engine_set_board(boardPtr, 0);
+            mod._engine_set_history(histPtr, 0);
+            
+            document.getElementById('result').textContent += '开始搜索...\n';
+            var move = mod._engine_get_best_move(1000);
+            document.getElementById('result').textContent += '搜索完成，走法=' + move + '\n';
+            document.getElementById('result').textContent += '节点数=' + mod._engine_get_node_count() + '\n';
+        }
+    }).catch(function(e) {
+        document.getElementById('status').textContent = 'pthread初始化失败: ' + e.message;
+        document.getElementById('result').textContent += e.stack + '\n';
+    });
+    
+    // 超时检测
+    setTimeout(function() {
+        if (document.getElementById('status').textContent.indexOf('成功') === -1) {
+            document.getElementById('status').textContent += ' (10秒超时)';
+        }
+    }, 10000);
+});
+</script>
+</body>
+</html>
